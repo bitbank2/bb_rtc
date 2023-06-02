@@ -79,14 +79,14 @@ public:
     ~BBRTC() {};
     int getType();
     int getStatus();
-    void setbb(BBI2C *pBB);
+    void setBB(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true);
     void setFreq(int iFreq);
     void setAlarm(uint8_t type, struct tm *thetime);
     int getTemp();
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);
-    setCountdownAlarm(int iSeconds);
+    void setCountdownAlarm(int iSeconds);
     void clearAlarms();
     uint32_t getEpoch();
     void setEpoch(uint32_t tt);
