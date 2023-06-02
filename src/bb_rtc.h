@@ -1,5 +1,20 @@
 #ifndef __BB_RTC__
 #define __BB_RTC__
+//
+// BitBank Realtime Clock Library
+// written by Larry Bank
+//
+// Copyright 2023 BitBank Software, Inc. All Rights Reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//    http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//===========================================================================
 
 #include <Arduino.h>
 #ifndef __AVR_ATtiny85__
@@ -7,9 +22,11 @@
 #endif
 #include <BitBang_I2C.h>
 
+#define RTC_SUCCESS 0
+#define RTC_ERROR 1
+
 // I2C base address of the DS3231 RTC and AT24C32 EEPROM
 #define RTC_DS3231_ADDR 0x68
-#define EEPROM_ADDR 0x57
 #define RTC_RV3032_ADDR 0x51
 #define RTC_PCF8563_ADDR 0x51
 
@@ -17,14 +34,6 @@
 #define STATUS_RUNNING 1
 #define STATUS_IRQ1_TRIGGERED 2
 #define STATUS_IRQ2_TRIGGERED 4
-
-// Wire types
-enum
-{
-  RTC_SW_WIRE=0, // Bit Bang
-  RTC_HW_WIRE,
-  RTC_HAS_WIRE
-};
 
 enum
 {
@@ -68,6 +77,7 @@ class BBRTC
 public:
     BBRTC() {}
     ~BBRTC() {};
+    int getType();
     int getStatus();
     void setbb(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true);
