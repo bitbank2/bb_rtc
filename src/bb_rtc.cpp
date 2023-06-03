@@ -40,7 +40,7 @@ uint8_t ucTemp[4];
      // Make sure it's really a DS3231 because other I2C devices
      // use the same address (0x68)
       I2CReadRegister(&_bb, RTC_DS3231_ADDR, 0x12, ucTemp, 1); // read temp reg
-      if ((ucTemp[0] & 0x7f) == 0) {
+      if ((ucTemp[0] & 0x3f) == 0) {
          _iRTCAddr = RTC_DS3231_ADDR;
          _iRTCType = RTC_DS3231;
       }
@@ -130,7 +130,7 @@ int i;
           else if (iFreq == 1024) c = 1;
           else if (iFreq == 4096) c = 2;
           else if (iFreq == 8192) c = 3;
-          ucTemp[1] = 0x40 | (c << 3); // enable SQW, disable interrupts
+          ucTemp[1] = (c << 3); // enable SQW, disable interrupts
        }
        I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
    } else if (_iRTCType == RTC_PCF8563) {
