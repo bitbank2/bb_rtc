@@ -23,14 +23,6 @@ int BBRTC::getType(void)
     return _iRTCType;
 } /* getType() */
 //
-// Set the BitBang_I2C wire structure
-//
-void BBRTC::setBB(BBI2C *pBB)
-{
-  if (pBB != NULL)
-    memcpy(&_bb, pBB, sizeof(_bb));
-} /* setBB() */
-//
 // Turn on the RTC
 // returns 1 for success, 0 for failure
 //
@@ -89,7 +81,7 @@ uint8_t ucTemp[4];
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
   }
   return RTC_SUCCESS;
-} /* rtcInit() */
+} /* init() */
 //
 // Enable/set the CLKOUT frequency (-1 = disable)
 //
@@ -142,8 +134,21 @@ int i;
        }
        I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
    } else if (_iRTCType == RTC_PCF8563) {
+       ucTemp[0] = 0xd; // CLKOUT control
+       if (iFreq == -1)  { // disable CLKOUT
+          ucTemp[1] = 0x0; // disable CLKOUT
+       } else { // enable CLKOUT at the given frequency
+          if (iFreq == 32768)
+             ucTemp[1] = 0x80;
+          else if (iFreq == 1024)
+             ucTemp[1] = 0x81;
+          else if (iFreq == 32)
+             ucTemp[1] = 0x82;
+          else ucTemp[1] = 0x83; // assume 1Hz
+       }
+       I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
    }
-} /* rtcSetFreq() */
+} /* setFreq() */
 //
 // Retrieve the current power & irq status
 //
@@ -551,7 +556,7 @@ uint8_t i;
     }
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 8);
 
-} /* rtcSetTime() */
+} /* setTime() */
 
 //
 // Read the current time/date

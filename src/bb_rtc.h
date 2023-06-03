@@ -72,6 +72,7 @@ enum {
   ALARM_DAY,
   ALARM_DATE
 };
+
 class BBRTC
 {
 public:
@@ -79,7 +80,6 @@ public:
     ~BBRTC() {};
     int getType();
     int getStatus();
-    void setBB(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true);
     void setFreq(int iFreq);
     void setAlarm(uint8_t type, struct tm *thetime);
