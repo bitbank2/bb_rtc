@@ -8,4 +8,11 @@ My focus lately has been to make embedded programming as simple as possible (for
 
 The interrupt pin (usually open-collector with pull-up resistor) is enabled for the alarms and countdown timer functions. It's up to you to act on the changing state of the pin.<br>
 
+A photo of the Arduino Nano 33 BLE example sketch<br>
+![bb_rtc](/bb_rtc_demo.jpg?raw=true "bb_rtc")
+<br>
+
+If you find this code useful, please consider sending a donation or becomming a Github sponsor.
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=SR4F44J2UR8S4)
 
