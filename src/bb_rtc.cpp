@@ -15,6 +15,15 @@
 //===========================================================================
 #include "bb_rtc.h"
 
+#define LOGGING
+
+void BBRTC::logmsg(const char *msg)
+{
+#ifdef LOGGING
+  Serial.println(msg);
+#endif
+} /* logmsg() */
+
 //
 // Return the RTC chip type
 //
@@ -22,6 +31,49 @@ int BBRTC::getType(void)
 {
     return _iRTCType;
 } /* getType() */
+
+//
+// Enable or disable trickle charging
+// of the backup battery source
+//
+void BBRTC::setVBackup(bool bCharge)
+{
+uint8_t ucTemp[4];
+
+    if (_iRTCType != RTC_RV3032) return; // only supported on RVxxxx devices
+
+    ucTemp[0] = 0x11;
+    ucTemp[1] = 0x4; // event interrupt enabled
+    I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+    ucTemp[0] = 0x15;
+    ucTemp[1] = 0x0; // event filter off
+    I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+    ucTemp[0] = 0x10; // control 1
+    ucTemp[1] = 0x04; // EERD is disabled to allow modifying EEPROM values
+    I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+
+    if (bCharge) { // enable trickle charging on VBAT pin
+         ucTemp[0] = 0x3d; // EEADDR, EEDATA
+         ucTemp[1] = 0xc0; // eeprom PMU register
+         ucTemp[2] = 0x11; // enable trickle charger and direct switching mode
+         I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 3);
+    } else { // disable trickle charging on VBAT pin (default)
+         ucTemp[0] = 0x3d; // EEADDR, EEDATA
+         ucTemp[1] = 0xc0; // eeprom PMU register
+         ucTemp[2] = 0x00; // disable trickle charger and DSM (default value)
+         I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 3);   
+    } // disable trickle charging
+ // write the changed byte into EEPROM, then copy all EEPROM registers to RAM
+    ucTemp[0] = 0x3f; // eeprom command
+    ucTemp[1] = 0x21; // write 1 byte of EEPROM data
+    I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+    delay(10); // doc says 5-9ms to write one byte
+    ucTemp[0] = 0x3f; // eeprom command
+    ucTemp[1] = 0x12; // copy EEPROM to RAM backup registers
+    I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+    delay(64);
+} /* setVBackup() */
+
 //
 // Turn on the RTC
 // returns 1 for success, 0 for failure
@@ -30,17 +82,19 @@ int BBRTC::init(int iSDA, int iSCL, bool bWire)
 {
 uint8_t ucTemp[4];
 
+  logmsg("Entering init");
   memset(&_bb,0,sizeof(_bb));
   _bb.iSDA = iSDA;
   _bb.iSCL = iSCL;
   _bb.bWire = bWire;
-  I2CInit(&_bb, 100000L); // initialize the bit bang library
+  I2CInit(&_bb, 50000L); // initialize the bit bang library
   _iRTCType = -1;
   if (I2CTest(&_bb, RTC_DS3231_ADDR)) {
      // Make sure it's really a DS3231 because other I2C devices
      // use the same address (0x68)
       I2CReadRegister(&_bb, RTC_DS3231_ADDR, 0x12, ucTemp, 1); // read temp reg
       if ((ucTemp[0] & 0x3f) == 0) {
+	logmsg("Found DS3231");
          _iRTCAddr = RTC_DS3231_ADDR;
          _iRTCType = RTC_DS3231;
       }
@@ -54,14 +108,17 @@ uint8_t ucTemp[4];
      I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
      I2CReadRegister(&_bb, RTC_RV3032_ADDR, 0x17, ucTemp, 1);
      if (ucTemp[0] == 0x55) {
+        logmsg("Found RV3032");
         _iRTCAddr = RTC_RV3032_ADDR;
         _iRTCType = RTC_RV3032;
      } else { // it must be the PCF8563
+        logmsg("Found PCF8563");
         _iRTCAddr = RTC_PCF8563_ADDR;
         _iRTCType = RTC_PCF8563;
      }
   }
   if (_iRTCType == -1) { // not found
+     logmsg("no supported device found");
      return RTC_ERROR;
   }
 
@@ -370,8 +427,12 @@ uint8_t ucTemp[8];
          //case ALARM_SECOND: // not supported 
          case ALARM_MINUTE: // repeats on a specific minute
             ucTemp[0] = 0x08; // minutes alarm
-            ucTemp[1] = ((pTime->tm_min / 10) << 4);
-            ucTemp[1] |= (pTime->tm_min % 10); // first 7 bits hold BCD minutes
+            if (pTime == NULL) { // set repeating alarm every minute
+               ucTemp[1] = 0x80; // all disabled = repeating alarm
+            } else { // wake at a specific minute
+               ucTemp[1] = ((pTime->tm_min / 10) << 4);
+               ucTemp[1] |= (pTime->tm_min % 10); // first 7 bits hold BCD minutes
+            }
             ucTemp[2] = 0x80; // disable hours alarm
             ucTemp[3] = 0x80; // disable date alarm
             I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
@@ -623,7 +684,7 @@ unsigned char ucTemp[20];
 // Reset the "fired" bits for Alarm 1 and 2
 // Interrupts will not occur until these bits are cleared
 //
-void BBRTC::clearAlarms(void)
+void BBRTC::clearAlarms(bool bDisable)
 {
 uint8_t ucTemp[4];
 
@@ -642,10 +703,12 @@ uint8_t ucTemp[4];
   }
   else if (_iRTCType == RTC_RV3032)
   {
-    I2CReadRegister(&_bb, _iRTCAddr, 0x11, &ucTemp[1], 1);
-    ucTemp[0] = 0x11; // control 2
-    ucTemp[1] &= 0x81; // disable all alarms
-    I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+    if (bDisable) {
+       I2CReadRegister(&_bb, _iRTCAddr, 0x11, &ucTemp[1], 1);
+       ucTemp[0] = 0x11; // control 2
+       ucTemp[1] &= 0x81; // disable all alarms
+       I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+    }
     ucTemp[0] = 0x0d; // status register
     ucTemp[1] = 0x00; // clear all flags
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);

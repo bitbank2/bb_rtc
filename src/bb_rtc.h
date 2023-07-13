@@ -81,13 +81,15 @@ public:
     int getType();
     int getStatus();
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true);
+    void logmsg(const char *msg);
     void setFreq(int iFreq);
+    void setVBackup(bool bCharge);
     void setAlarm(uint8_t type, struct tm *thetime);
     int getTemp();
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);
     void setCountdownAlarm(int iSeconds);
-    void clearAlarms();
+    void clearAlarms(bool bDisable = true);
     uint32_t getEpoch();
     void setEpoch(uint32_t tt);
 
