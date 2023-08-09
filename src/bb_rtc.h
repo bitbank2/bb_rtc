@@ -16,11 +16,32 @@
 // limitations under the License.
 //===========================================================================
 
+#ifdef __LINUX__
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/types.h>
+#include <linux/spi/spidev.h>
+#include <linux/i2c-dev.h>
+#include <time.h>
+typedef struct _tagbbi2c
+{
+  int file_i2c;
+  uint8_t iSDA, iSCL;
+  uint8_t bWire;
+} BBI2C;
+
+#else
 #include <Arduino.h>
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
 #endif
 #include <BitBang_I2C.h>
+#endif // __LINUX__
 
 #define RTC_SUCCESS 0
 #define RTC_ERROR 1
@@ -48,7 +69,7 @@ enum
 // Time structure
 // modeled after Linux version
 //
-#ifndef _TIME_H_
+#if !defined( _TIME_H_ ) && !defined( __LINUX__ )
 struct tm
 {
   int tm_sec;
@@ -97,7 +118,6 @@ private:
     int _iRTCType;
     int _iRTCAddr;
     BBI2C _bb;
-
 }; // class BBRTC
 
 #endif // __BB_RTC__
