@@ -50,6 +50,7 @@ typedef struct _tagbbi2c
 #define RTC_DS3231_ADDR 0x68
 #define RTC_RV3032_ADDR 0x51
 #define RTC_PCF8563_ADDR 0x51
+#define RTC_PCF85063A_ADDR 0x51
 
 // Status bits
 #define STATUS_RUNNING 1
@@ -62,6 +63,7 @@ enum
   RTC_PCF8563,
   RTC_DS3231,
   RTC_RV3032,
+  RTC_PCF85063A,
   RTC_TYPE_COUNT
 };
 
@@ -101,7 +103,7 @@ public:
     ~BBRTC() {};
     int getType();
     int getStatus();
-    int init(int iSDA=-1, int iSCL=-1, bool bWire = true);
+    int init(int iSDA=-1, int iSCL=-1, bool bWire = true, uint32_t u32Speed = 100000);
     void logmsg(const char *msg);
     void setFreq(int iFreq);
     void setVBackup(bool bCharge);

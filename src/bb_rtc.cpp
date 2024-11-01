@@ -144,7 +144,7 @@ uint8_t ucTemp[4];
 // Turn on the RTC
 // returns 1 for success, 0 for failure
 //
-int BBRTC::init(int iSDA, int iSCL, bool bWire)
+int BBRTC::init(int iSDA, int iSCL, bool bWire, uint32_t u32Speed)
 {
 uint8_t ucTemp[4];
 
@@ -153,7 +153,7 @@ uint8_t ucTemp[4];
   _bb.iSDA = iSDA;
   _bb.iSCL = iSCL;
   _bb.bWire = bWire;
-  I2CInit(&_bb, 50000L); // initialize the bit bang library
+  I2CInit(&_bb, u32Speed); // initialize the bit bang library
   _iRTCType = -1;
   if (I2CTest(&_bb, RTC_DS3231_ADDR)) {
      // Make sure it's really a DS3231 because other I2C devices
@@ -166,7 +166,7 @@ uint8_t ucTemp[4];
       }
   }
   if (_iRTCType == -1 && I2CTest(&_bb, RTC_RV3032_ADDR)) {
-     // The PCF8563 and RV3032 use the same I2C address (0x51)
+     // The PCF85063A, PCF8563 and RV3032 all use the same I2C address (0x51)
      // Try to write to the temperature threshold register to see
      // which one is connected
      ucTemp[0] = 0x17; // temp threshold high register
@@ -177,10 +177,20 @@ uint8_t ucTemp[4];
         logmsg("Found RV3032");
         _iRTCAddr = RTC_RV3032_ADDR;
         _iRTCType = RTC_RV3032;
-     } else { // it must be the PCF8563
-        logmsg("Found PCF8563");
-        _iRTCAddr = RTC_PCF8563_ADDR;
-        _iRTCType = RTC_PCF8563;
+     } else { // it must be the PCF8563 or PCF85063A
+        ucTemp[0] = 0x3; // 1 byte of RAM in PCF85063A, minutes reg in BM8563
+        ucTemp[1] = 0xaa;
+        I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+        I2CReadRegister(&_bb, RTC_RV3032_ADDR, 0x03, ucTemp, 1);
+        if (ucTemp[0] == 0xaa) {
+            logmsg("Found PCF85063A");
+            _iRTCAddr = RTC_PCF85063A_ADDR;
+            _iRTCType = RTC_PCF85063A;
+        } else {
+            logmsg("Found PCF8563");
+            _iRTCAddr = RTC_PCF8563_ADDR;
+            _iRTCType = RTC_PCF8563;
+        }
      }
   }
   if (_iRTCType == -1) { // not found
@@ -197,7 +207,7 @@ uint8_t ucTemp[4];
     ucTemp[0] = 0xc0; // EEPROM PMU
     ucTemp[1] = 0x10; // enable direct VBACKUP switchover, disable trickle charge
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2); 
-  } else { // PCF8563
+  } else { // PCF8563 and PCF85063A
     ucTemp[0] = 0; // control_status_1
     ucTemp[1] = 0; // normal mode, clock on, power-on-reset disabled
     ucTemp[2] = 0; // disable all alarms
@@ -323,13 +333,15 @@ void BBRTC::setEpoch(uint32_t tt)
 {
 uint8_t ucTemp[8];
 
-  I2CReadRegister(&_bb, _iRTCAddr, 0x10, &ucTemp[1], 1); // read control register 2
-  ucTemp[0] = 0x10;
-  ucTemp[1] |= 1; // set RESET BIT
-  I2CWrite(&_bb, _iRTCAddr, ucTemp, 2); // do a reset of seconds and prescaler
-  ucTemp[0] = 0x1b;
-  memcpy(&ucTemp[1], (uint8_t *)&tt, sizeof(tt));
-  I2CWrite(&_bb, _iRTCAddr, ucTemp, 1+sizeof(tt)); // set time
+  if (_iRTCType == RTC_RV3032) {
+    I2CReadRegister(&_bb, _iRTCAddr, 0x10, &ucTemp[1], 1); // read control register 2
+    ucTemp[0] = 0x10;
+    ucTemp[1] |= 1; // set RESET BIT
+    I2CWrite(&_bb, _iRTCAddr, ucTemp, 2); // do a reset of seconds and prescaler
+    ucTemp[0] = 0x1b;
+    memcpy(&ucTemp[1], (uint8_t *)&tt, sizeof(tt));
+    I2CWrite(&_bb, _iRTCAddr, ucTemp, 1+sizeof(tt)); // set time
+  }
 } /* setEpoch() */
 
 //
@@ -631,8 +643,8 @@ uint8_t i;
         // year
         ucTemp[7] = (((pTime->tm_year % 100)/10) << 4);
         ucTemp[7] |= (pTime->tm_year % 10);
-    } else if (_iRTCType == RTC_PCF8563) {
-        ucTemp[0] = 2; // start at register 2
+    } else if (_iRTCType == RTC_PCF8563 || _iRTCType == RTC_PCF85063A) {
+        ucTemp[0] = (_iRTCType == RTC_PCF8563) ? 2:4; // start at register 2/4
         // seconds
         ucTemp[1] = ((pTime->tm_sec / 10) << 4);
         ucTemp[1] |= (pTime->tm_sec % 10);
@@ -651,7 +663,7 @@ uint8_t i;
         i = pTime->tm_mon+1; // 1-12 on the RTC
         ucTemp[6] = (i / 10) << 4;
         ucTemp[6] |= (i % 10);
-        if (pTime->tm_year >= 100)
+        if (pTime->tm_year >= 100 && _iRTCType == RTC_PCF8563)
            ucTemp[6] |= 0x80; // century bit
         // year
         ucTemp[7] = (((pTime->tm_year % 100)/10) << 4);
@@ -716,8 +728,8 @@ unsigned char ucTemp[20];
         pTime->tm_mon = (((ucTemp[5] >> 4) & 1) * 10 + (ucTemp[5] & 0xf)) -1; // 0-11
         pTime->tm_year = (ucTemp[5] >> 7) * 100; // century
         pTime->tm_year += ((ucTemp[6] >> 4) * 10) + (ucTemp[6] & 0xf);
-  } else if (_iRTCType == RTC_PCF8563) {
-        I2CReadRegister(&_bb, _iRTCAddr, 2, ucTemp, 7); // start of data registers
+  } else if (_iRTCType == RTC_PCF8563 || _iRTCType == RTC_PCF85063A) {
+        I2CReadRegister(&_bb, _iRTCAddr, (_iRTCType == RTC_PCF8563) ? 2 : 4, ucTemp, 7); // start of data registers
         memset(pTime, 0, sizeof(struct tm));
         // convert numbers from BCD
         pTime->tm_sec = (((ucTemp[0] >> 4) & 7) * 10) + (ucTemp[0] & 0xf);
@@ -729,7 +741,11 @@ unsigned char ucTemp[20];
         pTime->tm_mday = ((ucTemp[3] >> 4) * 10) + (ucTemp[3] & 0xf);
         // month
         pTime->tm_mon = (((ucTemp[5] >> 4) & 1) * 10 + (ucTemp[5] & 0xf)) -1; // 0-11
-        pTime->tm_year = (ucTemp[5] >> 7) * 100; // century
+        if (_iRTCType == RTC_PCF8563) {
+            pTime->tm_year = (ucTemp[5] >> 7) * 100; // century
+        } else { // assume 20th century
+            pTime->tm_year = 100;
+        }
         pTime->tm_year += ((ucTemp[6] >> 4) * 10) + (ucTemp[6] & 0xf);
   } else if (_iRTCType == RTC_RV3032) {
         I2CReadRegister(&_bb, _iRTCAddr, 0x01, ucTemp, 7); // start of data registers
@@ -766,6 +782,13 @@ uint8_t ucTemp[4];
     ucTemp[0] = 1; // control_status_2
     ucTemp[1] = 0; // disable all alarms
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+  }
+  else if (_iRTCType == RTC_PCF85063A)
+  {
+      I2CReadRegister(&_bb, _iRTCAddr, 1, &ucTemp[1], 1); // read reg value first
+      ucTemp[1] &= 7; // disable all alarm flags while leaving clockout bits
+      ucTemp[0] = 1; // control_status_2
+      I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
   }
   else if (_iRTCType == RTC_RV3032)
   {

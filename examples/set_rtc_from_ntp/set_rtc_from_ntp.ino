@@ -9,9 +9,10 @@ static NTPClient timeClient(ntpUDP, "pool.ntp.org");
 struct tm myTime;
 
 BBRTC rtc;
+const char *szDays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 const char *szRTCType[] = {"None", "PCF8563", "DS3231", "RV-3032"};
-const char* ssid     = "your_ssid";
-const char* password = "your_password";
+const char* ssid     = "MEO-B970C0-2G&5G";
+const char* password = "19b59e2bf7";
 
 //
 // This function uses the ipapi.co website to convert
@@ -105,7 +106,7 @@ void setup() {
   Serial.begin(115200);
   delay(3000); // wait for CDC serial to start
   Serial.println("Starting...");
-  i = rtc.init(21, 22);
+  i = rtc.init(); //21, 22);
   if (i == RTC_SUCCESS) {
     Serial.println("Success");
     Serial.printf("RTC type = %s\n", szRTCType[rtc.getType()]);
@@ -114,10 +115,10 @@ void setup() {
     while (1) {};
   }
   rtc.getTime(&myTime);
-  if (myTime.tm_year > 122) {
-    Serial.println("Already has the correct date/time");
-    return;
-  }
+ // if (myTime.tm_year > 122) {
+ //   Serial.println("Already has the correct date/time");
+ //   return;
+ // }
   Serial.println("Connect to WiFi");
   WiFi.begin(ssid, password);
   iTimeout = 0;
@@ -144,9 +145,12 @@ if (WiFi.status() == WL_CONNECTED) {
       timeClient.begin();
       timeClient.setTimeOffset(iTimeOffset);
       timeClient.update();
+      Serial.println(timeClient.getFormattedTime());
       unsigned long epochTime = timeClient.getEpochTime();
   //Get a time structure
       struct tm *ptm = gmtime ((time_t *)&epochTime);
+      Serial.print("Setting date/time to: ");
+      Serial.printf("%s %02d/%02d/%02d %02d:%02d:%02d\n", szDays[ptm->tm_wday], ptm->tm_mday, ptm->tm_mon, ptm->tm_year % 100, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
       rtc.setTime(ptm); // set it into our RTC chip
       timeClient.end(); // don't need it any more
     } else {
@@ -160,6 +164,6 @@ if (WiFi.status() == WL_CONNECTED) {
 void loop() {
   // put your main code here, to run repeatedly:
   rtc.getTime(&myTime);
-  Serial.printf("%02d:%02d:%02d\n", myTime.tm_hour, myTime.tm_min, myTime.tm_sec);
+  Serial.printf("%s %02d/%02d/%02d %02d:%02d:%02d\n", szDays[myTime.tm_wday], myTime.tm_mday, myTime.tm_mon, myTime.tm_year % 100, myTime.tm_hour, myTime.tm_min, myTime.tm_sec);
   delay(1000);
 }
