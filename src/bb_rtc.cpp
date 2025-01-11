@@ -681,7 +681,7 @@ uint8_t i;
         ucTemp[3] = ((pTime->tm_hour / 10) << 4);
         ucTemp[3] |= (pTime->tm_hour % 10);
         // day of the week
-        ucTemp[4] = pTime->tm_wday + 1;
+        ucTemp[4] = pTime->tm_wday;
         // day of the month
         ucTemp[5] = (pTime->tm_mday / 10) << 4;
         ucTemp[5] |= (pTime->tm_mday % 10);
@@ -754,7 +754,7 @@ unsigned char ucTemp[20];
         pTime->tm_sec = ((ucTemp[0] >> 4) * 10) + (ucTemp[0] & 0xf);
         pTime->tm_min = ((ucTemp[1] >> 4) * 10) + (ucTemp[1] & 0xf);
         pTime->tm_hour = ((ucTemp[2] >> 4) * 10) + (ucTemp[2] & 0xf);
-        pTime->tm_wday = ucTemp[3] - 1; // day of the week (0-6)
+        pTime->tm_wday = (ucTemp[3] & 7); // day of the week (0-6)
         // day of the month
         pTime->tm_mday = ((ucTemp[4] >> 4) * 10) + (ucTemp[4] & 0xf);
         // month
