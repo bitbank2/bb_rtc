@@ -27,7 +27,8 @@ const char *szMonths[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
                           "Aug", "Sep", "Oct", "Nov", "Dec"};
 // Enumeration of the field names that the user can change
 enum {
-  MONTH_FIELD = 0,
+  DAY_FIELD = 0,
+  MONTH_FIELD,
   DATE_FIELD,
   YEAR_FIELD,
   HOUR_FIELD,
@@ -55,8 +56,9 @@ void ShowTime(void)
   rtc.getTime(&myTime); // get the current time
   oled.setFont(FONT_8x8);
   oled.setCursor(0,0);
+  oled.setTextColor((iField == DAY_FIELD) ? OBD_WHITE : OBD_BLACK);
+  oled.print(szDays[myTime.tm_wday]); // day of the week
   oled.setTextColor(OBD_BLACK);
-  oled.print(szDays[myTime.tm_wday]); // day of the week (set automatically by changing the tm_mday)
   oled.print(" ");
   oled.setTextColor((iField == MONTH_FIELD) ? OBD_WHITE : OBD_BLACK);
   oled.print(szMonths[myTime.tm_mon - 1]); // month
@@ -103,14 +105,14 @@ void loop() {
   int iRepeat; // used for knowing if a button is being held down
   uint8_t iButtons, iOldButtons = 0; // previous button state
   bool bChanged = true; // boolean indicating that the display needs to be updated
-  
+
   while (1) { // loop forever
     iButtons = GetButtons();
     if (iButtons != 0) { // manage button presses
       if ((iButtons & 1) && !(iOldButtons & 1)) { // button 0 newly pressed, change field
         iField++;
         bChanged = true;
-        if (iField > 5) iField = 0; // only 6 unique fields, wrap around
+        if (iField > SECOND_FIELD) iField = DAY_FIELD; // only 7 unique fields, wrap around
       } // button 0 pressed
       if (iButtons & 2) { // button 1 is being pressed, change value
           iDelta = 0; // assume no change needed in value
@@ -123,6 +125,10 @@ void loop() {
           }
           if (iDelta) { // we need to change the field value
             switch (iField) { // each field behaves slightly differently
+                case DAY_FIELD:
+                   myTime.tm_mday++;
+                   if (myTime.tm_mday > 6) myTime.tm_mday = 0; // wrap around to Sunday
+                   break;
                 case MONTH_FIELD:
                    myTime.tm_mon++;
                    if (myTime.tm_mon > 12) myTime.tm_mon = 1; // wrap around to January
