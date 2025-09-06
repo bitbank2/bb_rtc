@@ -28,20 +28,28 @@
 #include <linux/spi/spidev.h>
 #include <linux/i2c-dev.h>
 #include <time.h>
+
+#else // !LINUX
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#ifndef __AVR_ATtiny85__
+#include <Wire.h>
+#endif // !AVR
+#include <BitBang_I2C.h>
+#else // ESP_IDF?
+#include <stdint.h>
+#endif // ARDUINO
+#endif // !__LINUX__
+
+#ifndef ARDUINO
 typedef struct _tagbbi2c
 {
   int file_i2c;
   uint8_t iSDA, iSCL;
   uint8_t bWire;
 } BBI2C;
-
-#else
-#include <Arduino.h>
-#ifndef __AVR_ATtiny85__
-#include <Wire.h>
 #endif
-#include <BitBang_I2C.h>
-#endif // __LINUX__
 
 #define RTC_SUCCESS 0
 #define RTC_ERROR 1

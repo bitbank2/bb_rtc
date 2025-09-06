@@ -15,7 +15,11 @@
 //===========================================================================
 #include "bb_rtc.h"
 
-#define LOGGING
+#if !defined(ARDUINO) && !defined(__LINUX__)
+#include "esp_generic.inl"
+#endif
+
+//#define LOGGING
 
 void BBRTC::logmsg(const char *msg)
 {
