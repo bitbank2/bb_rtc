@@ -94,6 +94,18 @@ int rc;
 } /* I2CWrite() */
 #endif // __LINUX__
 
+BBI2C * BBRTC::getBB()
+{
+    return &_bb;
+} /* getBB() */
+
+void BBRTC::setBB(BBI2C *pBB)
+{
+    if (pBB) {
+        memcpy(&_bb, pBB, sizeof(_bb));
+    }
+} /* setBB() */
+
 //
 // Return the RTC chip type
 //
@@ -145,7 +157,7 @@ uint8_t ucTemp[4];
 } /* setVBackup() */
 
 //
-// Turn on the RTC
+// Auto-detect and turn on the RTC
 // returns 1 for success, 0 for failure
 //
 int BBRTC::init(int iSDA, int iSCL, bool bWire, uint32_t u32Speed)

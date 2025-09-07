@@ -50,23 +50,19 @@ static int iDelay = 1;
 #define OUTPUT 3
 #define INPUT_PULLDOWN 4
 
-int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen);
+static int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen);
 
-unsigned long micros(void)
-{
-    return (unsigned long)(esp_timer_get_time());
-}
-unsigned long millis(void)
-{
-    return micros() / 1000;
-}
+//static unsigned long micros(void)
+//{
+//    return (unsigned long)(esp_timer_get_time());
+//}
 
-void delayMicroseconds(uint32_t us)
+static void delayMicroseconds(uint32_t us)
 {
     ets_delay_us(us);
 }
 
-void delay(uint32_t ms)
+static void delay(uint32_t ms)
 {
     if (ms >= 10) {
         vTaskDelay(ms/10);
@@ -74,7 +70,7 @@ void delay(uint32_t ms)
     delayMicroseconds((ms % 10) * 1000);
 }
 
-void bbepPinMode(int iPin, int iMode)
+static void rtcPinMode(int iPin, int iMode)
 {
     gpio_config_t io_conf = {};
 
@@ -91,35 +87,29 @@ void bbepPinMode(int iPin, int iMode)
         io_conf.mode = GPIO_MODE_INPUT;
     }
     gpio_config(&io_conf); //configure GPIO with the given settings
-} /* bbepPinMode() */
+} /* rtcPinMode() */
 
-uint8_t SDA_READ(void)
+static uint8_t SDA_READ(void)
 {
     return gpio_get_level((gpio_num_t)u8SDA_Pin);
 }
-void SDA_HIGH(void)
+static void SDA_HIGH(void)
 {
-    bbepPinMode(u8SDA_Pin, INPUT_PULLDOWN);
+    rtcPinMode(u8SDA_Pin, INPUT_PULLDOWN);
 }
-void SDA_LOW(void)
+static void SDA_LOW(void)
 {
-    bbepPinMode(u8SDA_Pin, OUTPUT);
+    rtcPinMode(u8SDA_Pin, OUTPUT);
     gpio_set_level((gpio_num_t)u8SDA_Pin, 0);
 }
-void SCL_HIGH(void)
+static void SCL_HIGH(void)
 {
-    bbepPinMode(u8SCL_Pin, INPUT_PULLDOWN);
+    rtcPinMode(u8SCL_Pin, INPUT_PULLDOWN);
 }
-void SCL_LOW(void)
+static void SCL_LOW(void)
 {
-    bbepPinMode(u8SCL_Pin, OUTPUT);
+    rtcPinMode(u8SCL_Pin, OUTPUT);
     gpio_set_level((gpio_num_t)u8SCL_Pin, 0);
-}
-void I2CSetSpeed(int iSpeed)
-{
-    if (iSpeed >= 400000) iDelay = 1;
-    else if (iSpeed >= 100000) iDelay = 10;
-    else iDelay = 20;
 }
 
 // Transmit a byte and read the ack bit
@@ -127,7 +117,7 @@ void I2CSetSpeed(int iSpeed)
 // otherwise return 1 for success
 //
 
-int i2cByteOut(uint8_t b)
+static int i2cByteOut(uint8_t b)
 {
 uint8_t i, ack;
 
@@ -163,7 +153,7 @@ return (ack == 0); // a low ACK bit means success
 // if we get a NACK (negative acknowledge) return 0
 // otherwise return 1 for success
 //
-uint8_t i2cByteIn(uint8_t bLast)
+static uint8_t i2cByteIn(uint8_t bLast)
 {
 uint8_t i;
 uint8_t b = 0;
@@ -276,30 +266,31 @@ uint8_t b = 0;
 //
 // Initialize the Wire library on the given SDA/SCL GPIOs
 //
-void I2CInit(BBI2C *pI2C, unsigned int iClock)
+static void I2CInit(BBI2C *pI2C, unsigned int iClock)
 {
     if (!pI2C->bWire) {
-    u8SDA_Pin = pI2C->iSDA;
-    u8SCL_Pin = pI2C->iSCL;
+        u8SDA_Pin = pI2C->iSDA;
+        u8SCL_Pin = pI2C->iSCL;
 //    if (iSpeed >= 400000) iDelay = 1;
 //    else if (iSpeed >= 100000) iDelay = 10;
 //    else iDelay = 20;
-    } else {
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = pI2C->iSDA;
-    conf.scl_io_num = pI2C->iSCL;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = iClock;
-    conf.clk_flags = 0; 
-    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+    } else if (pI2C->iSDA == 0xff) { // -1 indicates that I2C is already initialized
+        i2c_config_t conf;
+        conf.mode = I2C_MODE_MASTER;
+        conf.sda_io_num = pI2C->iSDA;
+        conf.scl_io_num = pI2C->iSCL;
+        conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+        conf.master.clk_speed = iClock;
+        conf.clk_flags = 0; 
+        ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
+        ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+        pI2C->file_i2c = I2C_NUM_0; // I2C handle used
     }
     return;
 } /* I2CInit() */
 
-int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
+static int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
 {
 
     if (!pI2C->bWire) {
@@ -320,7 +311,7 @@ int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
     }
 } /* I2CWrite() */
 
-int I2CRead(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
+static int I2CRead(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
 {
 int i = 0;
 
@@ -349,7 +340,7 @@ int i = 0;
     return i;
 } /* I2CRead() */
 
-int I2CReadRegister(BBI2C *pI2C, unsigned char iAddr, unsigned char u8Register, unsigned char *pData, int iLen)
+static int I2CReadRegister(BBI2C *pI2C, unsigned char iAddr, unsigned char u8Register, unsigned char *pData, int iLen)
 {
     if (pI2C->bWire) {
         I2CWrite(pI2C, iAddr, &u8Register, 1);

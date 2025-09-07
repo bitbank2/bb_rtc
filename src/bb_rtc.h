@@ -42,6 +42,8 @@
 #endif // ARDUINO
 #endif // !__LINUX__
 
+// For Linux and esp-idf we add a file/device handle member
+// to the BBI2C structure
 #ifndef ARDUINO
 typedef struct _tagbbi2c
 {
@@ -111,6 +113,8 @@ public:
     ~BBRTC() {};
     int getType();
     int getStatus();
+    BBI2C *getBB();
+    void setBB(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true, uint32_t u32Speed = 100000);
     void logmsg(const char *msg);
     void setFreq(int iFreq);
