@@ -246,7 +246,7 @@ uint8_t b = 0;
         if (pI2C->bWire) {
       i2c_cmd_handle_t cmd = i2c_cmd_link_create();
       if (cmd == NULL) {
-         // ESP_LOGE("bb_epdiy", "insufficient memory for I2C transaction");
+         // ESP_LOGE("bb_rtc", "insufficient memory for I2C transaction");
       }
       i2c_master_start(cmd);
       i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);

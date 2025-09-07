@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 #include <bb_rtc.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

@@ -81,7 +81,7 @@ enum
 // Time structure
 // modeled after Linux version
 //
-#if !defined( _TIME_H_ ) && !defined( __LINUX__ )
+#ifdef ARDUINO
 struct tm
 {
   int tm_sec;
