@@ -275,7 +275,7 @@ static void I2CInit(BBI2C *pI2C, unsigned int iClock)
 //    if (iSpeed >= 400000) iDelay = 1;
 //    else if (iSpeed >= 100000) iDelay = 10;
 //    else iDelay = 20;
-    } else if (pI2C->iSDA == 0xff) { // -1 indicates that I2C is already initialized
+    } else if (pI2C->iSDA != 0xff) { // -1 indicates that I2C is already initialized
         i2c_config_t conf;
         conf.mode = I2C_MODE_MASTER;
         conf.sda_io_num = pI2C->iSDA;
