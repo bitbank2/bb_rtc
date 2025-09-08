@@ -619,15 +619,15 @@ uint8_t ucTemp[8];
             I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
             break;
          case ALARM_TIME:
-         //case ALARM_DAY: // not supported
-         case ALARM_DATE:
+         case ALARM_DAY:
+//         case ALARM_DATE: // not supported
             ucTemp[0] = 0x08; // minutes alarm
             ucTemp[1] = ((pTime->tm_min / 10) << 4);
             ucTemp[1] |= (pTime->tm_min % 10); // first 7 bits hold BCD minutes
             ucTemp[2] = ((pTime->tm_hour / 10) << 4);
             ucTemp[2] |= (pTime->tm_hour % 10);
             if (type == ALARM_TIME) {
-               ucTemp[3] = 0x80; // disable date alarm
+               ucTemp[3] = 0x80; // disable day alarm
             } else {
                ucTemp[3] = ((pTime->tm_mday+1) / 10) << 4;
                ucTemp[3] |= ((pTime->tm_mday+1) % 10);

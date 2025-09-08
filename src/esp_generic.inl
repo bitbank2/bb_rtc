@@ -121,32 +121,31 @@ static int i2cByteOut(uint8_t b)
 {
 uint8_t i, ack;
 
-for (i=0; i<8; i++)
-{
+    for (i=0; i<8; i++) {
 //    delayMicroseconds(iDelay);
-    if (b & 0x80)
-      SDA_HIGH(); // set data line to 1
-    else
-      SDA_LOW(); // set data line to 0
-    b <<= 1;
+        if (b & 0x80)
+            SDA_HIGH(); // set data line to 1
+        else
+            SDA_LOW(); // set data line to 0
+        b <<= 1;
 //    delayMicroseconds(iDelay);
-    SCL_HIGH(); // clock high (slave latches data)
-    delayMicroseconds(iDelay);
+        SCL_HIGH(); // clock high (slave latches data)
+        delayMicroseconds(iDelay);
+        SCL_LOW(); // clock low
+        delayMicroseconds(iDelay);
+    } // for i
+    //delayMicroseconds(iDelay);
+    // read ack bit
+    SDA_HIGH(); // set data line for reading
+    //delayMicroseconds(iDelay);
+    SCL_HIGH(); // clock line high
+    delayMicroseconds(iDelay); // DEBUG - delay/2
+    ack = SDA_READ();
+    //delayMicroseconds(iDelay);
     SCL_LOW(); // clock low
-    delayMicroseconds(iDelay);
-} // for i
-//delayMicroseconds(iDelay);
-// read ack bit
-SDA_HIGH(); // set data line for reading
-//delayMicroseconds(iDelay);
-SCL_HIGH(); // clock line high
-delayMicroseconds(iDelay); // DEBUG - delay/2
-ack = SDA_READ();
-//delayMicroseconds(iDelay);
-SCL_LOW(); // clock low
-delayMicroseconds(iDelay); // DEBUG - delay/2
-SDA_LOW(); // data low
-return (ack == 0); // a low ACK bit means success
+    delayMicroseconds(iDelay); // DEBUG - delay/2
+    SDA_LOW(); // data low
+    return (ack == 0); // a low ACK bit means success
 } /* i2cByteOut() */
 //
 // Receive a byte and read the ack bit
@@ -181,66 +180,68 @@ uint8_t b = 0;
      //     SDA_HIGH();
           SDA_LOW(); // data low
        return b;
-     } /* i2cByteIn() */
-     //
-     // Send I2C STOP condition
-     //
-     void i2cEnd(void)
-     {
-        SDA_LOW(); // data line low
-        delayMicroseconds(iDelay);
-        SCL_HIGH(); // clock high
-        delayMicroseconds(iDelay);
-        SDA_HIGH(); // data high
-        delayMicroseconds(iDelay);
-     } /* i2cEnd() */
-     int i2cBegin(uint8_t addr, uint8_t bRead)
-     {
-        int rc;
-     //   SCL_HIGH();
-     //   delayMicroseconds(iDelay);
-        SDA_LOW(); // data line low first
-        delayMicroseconds(iDelay);
-        SCL_LOW(); // then clock line low is a START signal
-        addr <<= 1;
-        if (bRead)
-           addr++; // set read bit
-        rc = i2cByteOut(addr); // send the slave address and R/W bit
-        return rc;
-     } /* i2cBegin() */
+} /* i2cByteIn() */
+//
+// Send I2C STOP condition
+//
+static void i2cEnd(void)
+{
+   SDA_LOW(); // data line low
+   delayMicroseconds(iDelay);
+   SCL_HIGH(); // clock high
+   delayMicroseconds(iDelay);
+   SDA_HIGH(); // data high
+   delayMicroseconds(iDelay);
+} /* i2cEnd() */
 
-     void BBI2CWrite(uint8_t addr, uint8_t *pData, int iLen)
-     {
-     uint8_t b;
-     int rc;
+static int i2cBegin(uint8_t addr, uint8_t bRead)
+{
+   int rc;
+//   SCL_HIGH();
+//   delayMicroseconds(iDelay);
+   SDA_LOW(); // data line low first
+   delayMicroseconds(iDelay);
+   SCL_LOW(); // then clock line low is a START signal
+   addr <<= 1;
+   if (bRead)
+      addr++; // set read bit
+   rc = i2cByteOut(addr); // send the slave address and R/W bit
+   return rc;
+} /* i2cBegin() */
+
+static void BBI2CWrite(uint8_t addr, uint8_t *pData, int iLen)
+{
+uint8_t b;
+int rc;
      
-        i2cBegin(addr, 0);
-        rc = 1;
-        while (iLen && rc == 1)
-        {
-           b = *pData++;
-           rc = i2cByteOut(b);
-           if (rc == 1) // success
-           {
-              iLen--;
-           }
-        } // for each byte
-        i2cEnd();
-     //return (rc == 1) ? (iOldLen - iLen) : 0; // 0 indicates bad ack from sending a byte
-     } /* BBI2CWrite() */
-     int BBI2CRead(uint8_t addr, uint8_t *pData, int iLen)
-     {
-        i2cBegin(addr, 1);
-        while (iLen--)
-        {
-           *pData++ = i2cByteIn(iLen == 0);
-        } // for each byte
-        i2cEnd();
-        return 1;
-     } /* BBI2CRead() */
+    i2cBegin(addr, 0);
+    rc = 1;
+    while (iLen && rc == 1)
+    {
+       b = *pData++;
+       rc = i2cByteOut(b);
+       if (rc == 1) // success
+       {
+          iLen--;
+       }
+    } // for each byte
+    i2cEnd();
+//return (rc == 1) ? (iOldLen - iLen) : 0; // 0 indicates bad ack from sending a byte
+} /* BBI2CWrite() */
 
-     int I2CTest(BBI2C *pI2C, uint8_t addr)
-     {
+static int BBI2CRead(uint8_t addr, uint8_t *pData, int iLen)
+{
+    i2cBegin(addr, 1);
+    while (iLen--)
+    {
+       *pData++ = i2cByteIn(iLen == 0);
+    } // for each byte
+    i2cEnd();
+    return 1;
+} /* BBI2CRead() */
+
+static int I2CTest(BBI2C *pI2C, uint8_t addr)
+{
      int response = 0;
      
         if (pI2C->bWire) {
