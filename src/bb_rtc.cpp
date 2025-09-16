@@ -118,17 +118,6 @@ BBI2C * BBRTC::getBB()
     return &_bb;
 } /* getBB() */
 //
-// Pass in a BBI2C structure to be used by BBRTC. This is meant to allow
-// initializing the I2C bus in another library and sharing the bus handle
-//
-void BBRTC::setBB(BBI2C *pBB)
-{
-    if (pBB) {
-        memcpy(&_bb, pBB, sizeof(_bb));
-    }
-} /* setBB() */
-
-//
 // Return the RTC chip type (enumerated value - see bb_rtc.h)
 //
 int BBRTC::getType(void)
@@ -182,11 +171,6 @@ uint8_t ucTemp[4];
 // Auto-detect and turn on the RTC
 // returns RTC_SUCCESS or RTC_ERROR
 //
-// I2C devices usually exist at fixed addresses or groups of addresses.
-// Some devices from different vendors use the same address. If the device
-// doesn't have a WHO_AM_I register, then a specific behavior test may be
-// needed to verify it's the correct device.
-//
 int BBRTC::init(int iSDA, int iSCL, bool bWire, uint32_t u32Speed)
 {
 uint8_t ucTemp[4];
@@ -197,6 +181,31 @@ uint8_t ucTemp[4];
   _bb.iSCL = iSCL;
   _bb.bWire = bWire;
   I2CInit(&_bb, u32Speed); // initialize the bit bang library
+  return initInternal();
+} /* init() */
+//
+// Pass in a BBI2C structure to be used by BBRTC. This is meant to allow
+// initializing the I2C bus in another library and sharing the bus handle
+// 
+int BBRTC::init(BBI2C *pBB)
+{
+    if (pBB) {
+        memcpy(&_bb, pBB, sizeof(_bb));
+        return initInternal();
+    }
+    return RTC_ERROR;
+} /* setBB() */
+
+//
+// I2C devices usually exist at fixed addresses or groups of addresses.
+// Some devices from different vendors use the same address. If the device
+// doesn't have a WHO_AM_I register, then a specific behavior test may be
+// needed to verify it's the correct device.
+//
+int BBRTC::initInternal(void)
+{
+uint8_t ucTemp[4];
+
   _iRTCType = -1;
     
   if (I2CTest(&_bb, RTC_DS3231_ADDR)) {

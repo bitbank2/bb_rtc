@@ -34,14 +34,14 @@ time_t tt;
 		ShowHelp();
 		return 0;
 	}
-	        // I2C bus 1 is the default on RPI hardware
-        // most other Linux systems expose I2C on bus 0
-        i = rtc.init(1, 0); // find a supported RTC
+	// I2C bus 1 is the default on RPI hardware
+        // Other Linux systems can use any number from 0 to 10 (usually)
+        i = rtc.init(1); // find a supported RTC
         if (i != RTC_SUCCESS) {
-		printf("No supported RTC found\n");
-                return -1; // problem - quit
+	    printf("No supported RTC found\n");
+            return -1; // problem - quit
         } else {
-           printf("Found RTC, type = %s\n", szRTCType[rtc.getType()]);
+            printf("Found RTC, type = %s\n", szRTCType[rtc.getType()]);
 	}
         tt = time(NULL);  // get the current system time
         thetime = localtime(&tt);

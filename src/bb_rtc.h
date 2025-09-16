@@ -114,7 +114,7 @@ public:
     int getType();
     int getStatus();
     BBI2C *getBB();
-    void setBB(BBI2C *pBB);
+    init init(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true, uint32_t u32Speed = 100000);
     void logmsg(const char *msg);
     void setFreq(int iFreq);
@@ -127,6 +127,9 @@ public:
     void clearAlarms(bool bDisable = true);
     uint32_t getEpoch();
     void setEpoch(uint32_t tt);
+
+protected:
+    int initInternal(void);
 
 private:
     int _iRTCType;
