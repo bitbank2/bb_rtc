@@ -173,8 +173,6 @@ uint8_t ucTemp[4];
 //
 int BBRTC::init(int iSDA, int iSCL, bool bWire, uint32_t u32Speed)
 {
-uint8_t ucTemp[4];
-
   logmsg("Entering init");
   memset(&_bb,0,sizeof(_bb));
   _bb.iSDA = iSDA;

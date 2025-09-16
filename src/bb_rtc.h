@@ -114,7 +114,7 @@ public:
     int getType();
     int getStatus();
     BBI2C *getBB();
-    init init(BBI2C *pBB);
+    int init(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true, uint32_t u32Speed = 100000);
     void logmsg(const char *msg);
     void setFreq(int iFreq);
