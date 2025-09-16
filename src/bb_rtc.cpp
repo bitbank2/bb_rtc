@@ -354,7 +354,7 @@ uint8_t ucTemp[4];
   } else if (_iRTCType == RTC_RV3032) {
      iStatus |= STATUS_RUNNING; // oscillator is always running
      I2CReadRegister(&_bb, _iRTCAddr, 0xd, ucTemp, 1); // read the status register
-     if (ucTemp[0] & 8) // alarm fired
+     if (ucTemp[0] & 0x18) // alarm or countdown timer fired
         iStatus |= STATUS_IRQ1_TRIGGERED;
   } else if (_iRTCType == RTC_PCF8563 || _iRTCType == RTC_PCF85063A) {
      I2CReadRegister(&_bb, _iRTCAddr, 0x00, ucTemp, 2); // read control regs 1 & 2
@@ -658,10 +658,12 @@ void BBRTC::setCountdownAlarm(int iSeconds)
 uint8_t ucTemp[4];
 
   if (_iRTCType == RTC_RV3032) {
+     ucTemp[0] = 0xc; // upper 4 bits of countdown timer
+     ucTemp[1] = (uint8_t)(iSeconds >> 8) & 0xf;
+     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
      ucTemp[0] = 0xb; // low byte of countdown timer
      ucTemp[1] = (uint8_t)iSeconds;
-     ucTemp[2] = (uint8_t)(iSeconds >> 8);
-     I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
+     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
      // set up the clock frequency to use seconds as the period
      I2CReadRegister(&_bb, _iRTCAddr, 0x10, &ucTemp[1], 3); // control reg 1/2/3
      ucTemp[1] &= 0xfc; // control 1

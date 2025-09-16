@@ -36,7 +36,7 @@ time_t tt;
 	}
 	// I2C bus 1 is the default on RPI hardware
         // Other Linux systems can use any number from 0 to 10 (usually)
-        i = rtc.init(1); // find a supported RTC
+        i = rtc.init(4); // find a supported RTC
         if (i != RTC_SUCCESS) {
 	    printf("No supported RTC found\n");
             return -1; // problem - quit

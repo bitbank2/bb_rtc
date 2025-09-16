@@ -27,6 +27,7 @@ int iSec, iTimeout;
         // Other Linux systems can use any number from 0 to 10 (usually)
         i = rtc.init(4); // find a supported RTC
         if (i != RTC_SUCCESS) {
+            printf("NB: by default your system may require root access for I2C\n");
 	    printf("No supported RTC found\n");
             return -1; // problem - quit
         } else {
@@ -42,10 +43,14 @@ int iSec, iTimeout;
  
     printf("Setting alarm for 10 seconds from now...\n");
     rtc.clearAlarms();
-    tt += 10;
-    thetime = localtime(&tt);
     // The alarm will trigger a status change and the INT pin will be held low
-    rtc.setAlarm(ALARM_TIME, thetime);
+    if (rtc.getType() == RTC_RV3032) { // RV3032 doesn't support direct time alarms with seconds resolution; use a countdown timer instead
+        rtc.setCountdownAlarm(10);
+    } else {
+        tt += 10;
+        thetime = localtime(&tt);
+        rtc.setAlarm(ALARM_TIME, thetime);
+    }
     iTimeout = 0;
     iSec = -1;
     while (1) {
@@ -57,7 +62,7 @@ int iSec, iTimeout;
         }
         uint8_t u8Status = rtc.getStatus(); // poll the alarm flag
         if (u8Status & STATUS_IRQ1_TRIGGERED) {
-            if (iTimeout >= 99 && iTimeout < 110) {
+            if (iTimeout >= 90 && iTimeout < 110) {
                 printf("Alarm triggered at the correct time!\n");
             } else {
                 printf("Alarm triggered at the wrong time! %d\n", iTimeout);
