@@ -356,12 +356,19 @@ uint8_t ucTemp[4];
      I2CReadRegister(&_bb, _iRTCAddr, 0xd, ucTemp, 1); // read the status register
      if (ucTemp[0] & 0x18) // alarm or countdown timer fired
         iStatus |= STATUS_IRQ1_TRIGGERED;
-  } else if (_iRTCType == RTC_PCF8563 || _iRTCType == RTC_PCF85063A) {
+     Serial.println(ucTemp[0], HEX);
+  } else if (_iRTCType == RTC_PCF8563) {
      I2CReadRegister(&_bb, _iRTCAddr, 0x00, ucTemp, 2); // read control regs 1 & 2
      if (!(ucTemp[0] & 0x20))
         iStatus |= STATUS_RUNNING;
      if (ucTemp[1] & (8 | 4))
         iStatus |= STATUS_IRQ1_TRIGGERED; 
+  } else if (_iRTCType == RTC_PCF85063A) {
+     I2CReadRegister(&_bb, _iRTCAddr, 0x00, ucTemp, 2); // read control regs 1 & 2
+     if (!(ucTemp[0] & 0x20))
+        iStatus |= STATUS_RUNNING;
+     if (ucTemp[1] & (8 | 0x40))
+        iStatus |= STATUS_IRQ1_TRIGGERED;
   }
   return iStatus;
 } /* getStatus() */
@@ -644,6 +651,10 @@ uint8_t ucTemp[8];
             I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
             break;
       } // switch on alarm type
+      I2CReadRegister(&_bb, _iRTCAddr, 0x10, &ucTemp[1], 1); // read contents of ctrl1 first
+      ucTemp[1] &= ~0x8; // turn off countdown timer
+      ucTemp[0] = 0x10;
+      I2CWrite(&_bb, _iRTCAddr, ucTemp, 2); // update ctrl1
       ucTemp[0] = 0x11; // Control 2
       ucTemp[1] = 0x08; // enable time interrupt and disable other int functions
       I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
@@ -664,6 +675,10 @@ uint8_t ucTemp[4];
      ucTemp[0] = 0xb; // low byte of countdown timer
      ucTemp[1] = (uint8_t)iSeconds;
      I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+     // disable all time alarm registers
+     ucTemp[0] = 0x8; // 8/9/A
+     ucTemp[1] = ucTemp[2] = ucTemp[3] = 0x80; // disable min/hr/date
+     I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
      // set up the clock frequency to use seconds as the period
      I2CReadRegister(&_bb, _iRTCAddr, 0x10, &ucTemp[1], 3); // control reg 1/2/3
      ucTemp[1] &= 0xfc; // control 1

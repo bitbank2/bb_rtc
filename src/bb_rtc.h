@@ -77,25 +77,6 @@ enum
   RTC_TYPE_COUNT
 };
 
-//
-// Time structure
-// modeled after Linux version
-//
-#ifdef ARDUINO
-struct tm
-{
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int tm_mday;
-  int tm_mon;
-  int tm_year;
-  int tm_wday;
-  int tm_yday;
-  int tm_isdst;
-};
-#endif
-
 // Alarm types
 enum {
   ALARM_SECOND=0,
