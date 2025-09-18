@@ -168,6 +168,33 @@ uint8_t ucTemp[4];
 } /* setVBackup() */
 
 //
+// Stop the clock (set low power mode)
+//
+void BBRTC::stop(void)
+{
+uint8_t ucTemp[4];
+
+    switch (_iRTCType) {
+        case RTC_DS3231:
+            ucTemp[0] = 0xe; // control
+            ucTemp[1] = 0x80; // set the EOSC bit (disables the clock)
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+        case RTC_RV3032:
+            ucTemp[0] = 0x11; // Control 2
+            ucTemp[1] = 0x01; // set STOP bit
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+        case RTC_PCF8563: // same logic for these 2
+        case RTC_PCF85063A:
+            ucTemp[0] = 0; // control_1
+            ucTemp[1] = 0x20; // set STOP bit
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+    } // switch on RTC type
+} /* stop() */
+
+//
 // Auto-detect and turn on the RTC
 // returns RTC_SUCCESS or RTC_ERROR
 //

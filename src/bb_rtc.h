@@ -101,13 +101,14 @@ public:
     void setFreq(int iFreq);
     void setVBackup(bool bCharge);
     void setAlarm(uint8_t type, struct tm *thetime);
-    int getTemp();
+    int getTemp(void);
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);
     void setCountdownAlarm(int iSeconds);
     void clearAlarms(bool bDisable = true);
     uint32_t getEpoch();
     void setEpoch(uint32_t tt);
+    void stop();
 
 protected:
     int initInternal(void);
