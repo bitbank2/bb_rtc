@@ -34,6 +34,7 @@ The library defines the BBRTC class which makes use of the POSIX 'struct tm' aka
 - <b>clearAlarms</b> Clear any pending alarm
 - <b>getEpoch</b> Get the time as a 32-bit epoch value
 - <b>setEpoch</b> Set the time as a 32-bit epoch value
+- <b>stop</b> Stop the clock for low power standby
   
 ## Alarms and Interrupts
 The interrupt pin (normally open-collector and used with a pull-up resistor) is enabled for the alarms and countdown timer functions. It's up to you to act on the changing state of the pin. When you set an alarm, the IRQ feature is enabled and when you disable an alarm, it's disabled. You can also read the status register to see if an alarm caused your MCU to awaken.<br>
