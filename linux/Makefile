@@ -1,16 +1,15 @@
-CFLAGS= -D__LINUX__ -c -Wall -O2
+CFLAGS=-c -Wall -O2 -D__LINUX__ -I../src
 LIBS = -lm -lpthread
 
-all: getset_time
+all: libbb_rtc.a
 
-getset_time: main.o bb_rtc.o
-	g++ main.o bb_rtc.o $(LIBS) -o getset_time 
+libbb_rtc.a: bb_rtc.o
+	ar -rc libbb_rtc.a bb_rtc.o ;\
+	sudo cp libbb_rtc.a /usr/local/lib ;\
+	sudo cp ../src/bb_rtc.h /usr/local/include
 
-main.o: main.cc
-	g++ $(CFLAGS) main.cc
-
-bb_rtc.o: ../src/bb_rtc.cpp
-	g++ $(CFLAGS) ../src/bb_rtc.cpp
+bb_rtc.o: ../src/bb_rtc.cpp ../src/bb_rtc.h
+	$(CXX) $(CFLAGS) ../src/bb_rtc.cpp
 
 clean:
-	rm *.o getset_time
+	rm *.o libbb_rtc.a

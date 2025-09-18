@@ -12,8 +12,8 @@ int iTimeOffset; // offset in seconds
 BBRTC rtc;
 const char *szDays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 const char *szRTCType[] = {"None", "BM8563", "DS3231", "RV-3032", "PCF85063A"};
-const char* ssid     = "your_ssid";
-const char* password = "your_pw";
+const char* ssid     = "MEO-B970C0-2G&5G";
+const char* password = "19b59e2bf7";
 
 //
 // This function uses the ipapi.co website to convert
