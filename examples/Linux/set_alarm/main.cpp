@@ -10,7 +10,7 @@
 #include <time.h>
 #include <bb_rtc.h>
 
-const char *szRTCType[] = {"None", "PCF8563", "DS3231", "RV-3032"};
+const char *szRTCType[] = {"None", "PCF8563", "DS3231", "RV-3032", "PCF85063A"};
 
 BBRTC rtc;
 
