@@ -53,9 +53,9 @@ typedef struct _tagbbi2c
 #define RTC_PCF85063A_ADDR 0x51
 
 // Status bits
-#define STATUS_RUNNING        0x10
-#define STATUS_IRQ1_TRIGGERED 0x20
-#define STATUS_IRQ2_TRIGGERED 0x40
+#define RTC_RUNNING     0x10
+#define RTC_ALARM1_FLAG 0x20
+#define RTC_ALARM2_FLAG 0x40
 
 enum
 {
@@ -107,7 +107,7 @@ public:
     void logmsg(const char *msg);
     void setFreq(int iFreq);
     void setVBackup(bool bCharge);
-    void setAlarm(uint8_t type, struct tm *thetime);
+    void setAlarm(uint8_t type, struct tm *thetime, uint8_t u8AlarmFlag = RTC_ALARM1_FLAG);
     int getTemp();
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);

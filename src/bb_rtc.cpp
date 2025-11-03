@@ -294,22 +294,22 @@ uint8_t ucTemp[4];
   if (_iRTCType == RTC_DS3231) {
      I2CReadRegister(&_bb, _iRTCAddr, 0xf, ucTemp, 1); // read the status register
      if (!(ucTemp[0] & 0x80)) // oscillator running/stopped
-        iStatus |= STATUS_RUNNING;
+        iStatus |= RTC_RUNNING;
      if (ucTemp[0] & 2)
-        iStatus |= STATUS_IRQ2_TRIGGERED;
+        iStatus |= RTC_ALARM2_FLAG;
      if (ucTemp[0] & 1)
-        iStatus |= STATUS_IRQ1_TRIGGERED;
+        iStatus |= RTC_ALARM1_FLAG;
   } else if (_iRTCType == RTC_RV3032) {
-     iStatus |= STATUS_RUNNING; // oscillator is always running
+     iStatus |= RTC_RUNNING; // oscillator is always running
      I2CReadRegister(&_bb, _iRTCAddr, 0xd, ucTemp, 1); // read the status register
      if (ucTemp[0] & 8) // alarm fired
-        iStatus |= STATUS_IRQ1_TRIGGERED;
-  } else if (_iRTCType == RTC_PCF8563) {
+        iStatus |= RTC_ALARM1_FLAG;
+  } else if (_iRTCType == RTC_PCF8563  || _iRTCType == RTC_PCF85063A) {
      I2CReadRegister(&_bb, _iRTCAddr, 0x00, ucTemp, 2); // read control regs 1 & 2
      if (!(ucTemp[0] & 0x20))
-        iStatus |= STATUS_RUNNING;
-     if (ucTemp[1] & 8)
-        iStatus |= STATUS_IRQ1_TRIGGERED; 
+        iStatus |= RTC_RUNNING;
+     if (ucTemp[1] & 0x48)
+        iStatus |= RTC_ALARM1_FLAG; 
   } else { // type not set
      iStatus = RTC_ERROR;
   }
@@ -355,8 +355,9 @@ uint8_t ucTemp[8];
 // ALARM_TIME = When a specific hour:second match
 // ALARM_DAY = When a specific day of the week and time match
 // ALARM_DATE = When a specific day of the month and time match
+// The flag can be one of RTC_ALARM1_FLAG or RTC_ALARM2_FLAG
 //
-void BBRTC::setAlarm(uint8_t type, struct tm *pTime)
+void BBRTC::setAlarm(uint8_t type, struct tm *pTime, uint8_t u8AlarmFlag)
 {
 uint8_t ucTemp[8];
 
@@ -366,7 +367,11 @@ uint8_t ucTemp[8];
     {
       case ALARM_SECOND: // turn on repeating alarm for every second
         ucTemp[0] = 0xe; // control register
-        ucTemp[1] = 0x1d; // enable alarm1 interrupt
+        ucTemp[1] = 0x1c; // enable alarm1 flags?
+        if (u8AlarmFlag & RTC_ALARM1_FLAG)
+            ucTemp[1] |= 0x1;
+        if (u8AlarmFlag & RTC_ALARM2_FLAG)
+            ucTemp[1] |= 0x2;
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         ucTemp[0] = 0x7; // starting register for alarm 1
         ucTemp[1] = 0x80; // set bit 7 in the 4 registers to tell it a repeating alarm
