@@ -4,8 +4,7 @@
 // BitBank Realtime Clock Library
 // written by Larry Bank
 //
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2023-2025 BitBank Software, Inc. All Rights Reserved.
+// Copyright 2023 BitBank Software, Inc. All Rights Reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -29,30 +28,20 @@
 #include <linux/spi/spidev.h>
 #include <linux/i2c-dev.h>
 #include <time.h>
-
-#else // !LINUX
-
-#ifdef ARDUINO
-#include <Arduino.h>
-#ifndef __AVR_ATtiny85__
-#include <Wire.h>
-#endif // !AVR
-#include <BitBang_I2C.h>
-#else // ESP_IDF?
-#include <stdint.h>
-#endif // ARDUINO
-#endif // !__LINUX__
-
-// For Linux and esp-idf we add a file/device handle member
-// to the BBI2C structure
-#ifndef ARDUINO
 typedef struct _tagbbi2c
 {
   int file_i2c;
   uint8_t iSDA, iSCL;
   uint8_t bWire;
 } BBI2C;
+
+#else
+#include <Arduino.h>
+#ifndef __AVR_ATtiny85__
+#include <Wire.h>
 #endif
+#include <BitBang_I2C.h>
+#endif // __LINUX__
 
 #define RTC_SUCCESS 0
 #define RTC_ERROR 1
@@ -64,9 +53,9 @@ typedef struct _tagbbi2c
 #define RTC_PCF85063A_ADDR 0x51
 
 // Status bits
-#define STATUS_RUNNING 1
-#define STATUS_IRQ1_TRIGGERED 2
-#define STATUS_IRQ2_TRIGGERED 4
+#define STATUS_RUNNING        0x10
+#define STATUS_IRQ1_TRIGGERED 0x20
+#define STATUS_IRQ2_TRIGGERED 0x40
 
 enum
 {
@@ -77,6 +66,25 @@ enum
   RTC_PCF85063A,
   RTC_TYPE_COUNT
 };
+
+//
+// Time structure
+// modeled after Linux version
+//
+#if !defined( _TIME_H_ ) && !defined( __LINUX__ )
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+};
+#endif
 
 // Alarm types
 enum {
@@ -95,24 +103,18 @@ public:
     ~BBRTC() {};
     int getType();
     int getStatus();
-    BBI2C *getBB();
-    int init(BBI2C *pBB);
     int init(int iSDA=-1, int iSCL=-1, bool bWire = true, uint32_t u32Speed = 100000);
     void logmsg(const char *msg);
     void setFreq(int iFreq);
     void setVBackup(bool bCharge);
     void setAlarm(uint8_t type, struct tm *thetime);
-    int getTemp(void);
+    int getTemp();
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);
     void setCountdownAlarm(int iSeconds);
     void clearAlarms(bool bDisable = true);
     uint32_t getEpoch();
     void setEpoch(uint32_t tt);
-    void stop();
-
-protected:
-    int initInternal(void);
 
 private:
     int _iRTCType;
