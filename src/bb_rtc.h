@@ -4,7 +4,8 @@
 // BitBank Realtime Clock Library
 // written by Larry Bank
 //
-// Copyright 2023 BitBank Software, Inc. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2025 BitBank Software, Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,32 +17,33 @@
 // limitations under the License.
 //===========================================================================
 
-#ifdef __LINUX__
-#include <unistd.h>
+#ifndef ARDUINO
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#ifdef __LINUX__
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 #include <linux/i2c-dev.h>
 #include <time.h>
+#endif // __LINUX__
 typedef struct _tagbbi2c
 {
   int file_i2c;
   uint8_t iSDA, iSCL;
   uint8_t bWire;
 } BBI2C;
-
-#else
+#else // ARDUINO
 #include <Arduino.h>
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
 #endif
 #include <BitBang_I2C.h>
-#endif // __LINUX__
+#endif // !ARDUINO
 
 #define RTC_SUCCESS 0
 #define RTC_ERROR 1

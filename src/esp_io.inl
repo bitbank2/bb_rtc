@@ -1,9 +1,9 @@
 //
 // bb_rtc I/O wrapper functions for Espressif esp-idf
-// Copyright (c) 2025 BitBank Software, Inc.
 // Written by Larry Bank (bitbank@pobox.com)
 //
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2025 BitBank Software, Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -33,7 +33,6 @@
 #include "rom/ets_sys.h"
 #include "driver/i2c.h"
 #define I2C_MASTER_NUM              0
-// Since the Espressif I2C driver seems to corrupt memory with it's frequent allocs and frees, use bit banging
 static uint8_t u8SDA_Pin, u8SCL_Pin;
 static int iDelay = 1;
 
