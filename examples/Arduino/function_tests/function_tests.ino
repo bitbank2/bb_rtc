@@ -60,7 +60,7 @@ void loop()
 
   iTests++;
   Serial.print("getStatus() returns RTC_RUNNING");
-  TestPassFail(rtc.getStatus() & RTC_RUNNING, &iPass);
+  TestPassFail(rtc.getStatus() & STATUS_RUNNING, &iPass);
 
   iTests++;
   Serial.print("Clock chip advances the time");
@@ -79,8 +79,8 @@ void loop()
   rtc.setCountdownAlarm(3);
   delay(3000);
   iNewStatus = rtc.getStatus();
-  iStatus &= RTC_ALARM1_FLAG;
-  iNewStatus &= RTC_ALARM1_FLAG;
+  iStatus &= STATUS_IRQ1_TRIGGERED;
+  iNewStatus &= STATUS_IRQ1_TRIGGERED;
   TestPassFail(iStatus == 0 && iNewStatus != 0, &iPass);
 
   iTests++;
@@ -93,8 +93,8 @@ void loop()
   rtc.setAlarm(ALARM_TIME, &myTime);
   delay(3000);
   iNewStatus = rtc.getStatus();
-  iStatus &= RTC_ALARM1_FLAG;
-  iNewStatus &= RTC_ALARM1_FLAG;
+  iStatus &= STATUS_IRQ1_TRIGGERED;
+  iNewStatus &= STATUS_IRQ1_TRIGGERED;
   TestPassFail(iStatus == 0 && iNewStatus != 0, &iPass);
 
   Serial.print("Results for initialized tests: ");
