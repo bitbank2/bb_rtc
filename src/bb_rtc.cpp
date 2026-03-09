@@ -394,21 +394,25 @@ uint8_t ucTemp[8];
         ucTemp[1] = 0x1d; // enable alarm1 interrupt
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         ucTemp[0] = 0x7; // starting register for alarm 1
-        ucTemp[1] = 0x80; // set bit 7 in the 4 registers to tell it a repeating alarm
-        ucTemp[2] = 0x80;
+        // seconds
+        ucTemp[1] = ((pTime->tm_sec / 10) << 4);
+        ucTemp[1] |= (pTime->tm_sec % 10);
+
+        ucTemp[2] = 0x80; // set bit 7 in the other 3 registers
         ucTemp[3] = 0x80;
         ucTemp[4] = 0x80;
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 5);
         break;
       case ALARM_MINUTE: // turn on repeating alarm for every minute
         ucTemp[0] = 0xe; // control register
-        ucTemp[1] = 0x1e; // enable alarm2 interrupt
+        ucTemp[1] = 0x1d; // enable alarm1 interrupt
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
-        ucTemp[0] = 0xb; // starting register for alarm 2
-        ucTemp[1] = 0x80; // set bit 7 in the 3 registers to tell it a repeating alarm
-        ucTemp[2] = 0x80;
-        ucTemp[3] = 0x80;
-        I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
+        ucTemp[0] = 0x7; // starting register for alarm 1
+        ucTemp[1] = 0x80; // disable seconds
+        ucTemp[2] = ((pTime->tm_min / 10) << 4);
+        ucTemp[2] |= (pTime->tm_min % 10);
+        ucTemp[3] = ucTemp[4] = 0x80; // disable other alarm types
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 5);
         break;
       case ALARM_TIME: // turn on alarm to match a specific time
       case ALARM_DAY: // turn on alarm for a specific day of the week
@@ -425,34 +429,55 @@ uint8_t ucTemp[8];
         ucTemp[3] = ((pTime->tm_hour / 10) << 4);
         ucTemp[3] |= (pTime->tm_hour % 10);
         // day of the week
-        if (type == ALARM_DAY)
-           ucTemp[4] = pTime->tm_wday + 1;
+        if (type == ALARM_DAY) {
+           ucTemp[4] = 0x80 | 0x40 | pTime->tm_wday + 1;
         // day of the month
-        else if (type == ALARM_DATE) {
-          ucTemp[4] = (pTime->tm_mday / 10) << 4;
+        } else if (type == ALARM_DATE) {
+          ucTemp[4] = 0x80 | (pTime->tm_mday / 10) << 4;
           ucTemp[4] |= (pTime->tm_mday % 10);
-        } else {
-          ucTemp[4] = 0;
         }
-        // set the A1Mx bits (high bits of the 4 registers)
+        // clear the appropriate A1Mx bits (high bits of the 4 registers)
         // for the specific type of alarm
-        ucTemp[1] &= 0x7f; // make sure A1M1 & A1M2 are set to 0
-        ucTemp[2] &= 0x7f;
-        if (type == ALARM_TIME) // A1Mx bits should be x1000
-        {
-          ucTemp[3] &= 0x7f;
-          ucTemp[4] |= 0x80;
-        }
-        else if (type == ALARM_DAY) // A1Mx bits should be 10000
-        {
-          ucTemp[3] &= 0x7f;
+        if (type == ALARM_DAY || type == ALARM_DATE) {
           ucTemp[4] &= 0x7f;
-          ucTemp[4] |= 0x40; // DY/DT bit
         }
         // for matching the date, all bits are left as 0's (00000)
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 5);
         ucTemp[0] = 0xe; // control register
-        ucTemp[1] = 0x5; // enable alarm1 interrupt
+        ucTemp[1] = 0x1d; // enable alarm1 interrupt
+        ucTemp[2] = 0x00; // reset alarm status bits
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
+        break;
+      case ALARM2_MINUTE: // turn on repeating alarm for every minute
+      case ALARM2_TIME: // turn on alarm to match a specific time
+      case ALARM2_DAY: // turn on alarm for a specific day of the week
+      case ALARM2_DATE: // turn on alarm for a specific date
+// Values are stored as BCD
+        ucTemp[0] = 0xb; // start at register B
+        // minutes
+        ucTemp[1] = ((pTime->tm_min / 10) << 4);
+        ucTemp[1] |= (pTime->tm_min % 10);
+        // hours (and set 24-hour format)
+        ucTemp[2] = ((pTime->tm_hour / 10) << 4);
+        ucTemp[2] |= (pTime->tm_hour % 10);
+        // day of the week
+        if (type == ALARM2_DAY) {
+           ucTemp[3] = 0x80 | 0x40 | pTime->tm_wday + 1;
+        // day of the month
+        } else if (type == ALARM2_DATE) {
+          ucTemp[3] = 0x80 | (pTime->tm_mday / 10) << 4;
+          ucTemp[3] |= (pTime->tm_mday % 10);
+        }
+        // set the A2Mx bits (high bits of the 3 registers)
+        // for the specific type of alarm
+        if (type == ALARM2_MINUTE) {
+            ucTemp[2] |= 0x80; // disable hour timer;
+        } else if (type == ALARM2_DAY || type == ALARM2_DATE) {
+            ucTemp[3] &= 0x7f;
+        }
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
+        ucTemp[0] = 0xe; // control register
+        ucTemp[1] = 0x1e; // enable alarm2 interrupt
         ucTemp[2] = 0x00; // reset alarm status bits
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
         break;
