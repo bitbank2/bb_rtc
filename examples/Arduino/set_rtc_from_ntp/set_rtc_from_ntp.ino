@@ -11,9 +11,9 @@ int iTimeOffset; // offset in seconds
 
 BBRTC rtc;
 const char *szDays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-const char *szRTCType[] = {"None", "BM8563", "DS3231", "RV-3032", "PCF85063A"};
-const char* ssid     = "MEO-B970C0-2G&5G";
-const char* password = "19b59e2bf7";
+const char *szRTCType[] = {"None", "BM8563", "DS3231", "RV-3032", "PCF85063A", "RX8130"};
+const char* ssid     = "your_ssid";
+const char* password = "your_password";
 
 //
 // This function uses the ipapi.co website to convert
@@ -68,7 +68,7 @@ bool GetExternalIP(char *szIP)
     return false;
   }
   else {
-    Serial.println("Connedted!, getting IP ...");
+    Serial.println("Connected!, getting IP ...");
     int timeout = millis() + 5000;
 //    client.print("GET /?format=json");
     client.print("GET /?format=json HTTP/1.0\r\nHost: api.ipify.org");
@@ -111,7 +111,7 @@ void setup() {
   Serial.begin(115200);
   delay(3000); // wait for CDC serial to start
   Serial.println("Starting...");
-  i = rtc.init(7, 6);
+  i = rtc.init(3, 2);
   if (i == RTC_SUCCESS) {
     Serial.println("Success");
     Serial.printf("RTC type = %s\n", szRTCType[rtc.getType()]);
@@ -140,6 +140,7 @@ if (WiFi.status() == WL_CONNECTED) {
    Serial.println("Press reset to try again");
    while (1) {};
 }
+#ifdef FUTURE
   if (GetExternalIP(szIP)) {
     Serial.println("My IP:");
     Serial.println(szIP);
@@ -148,6 +149,7 @@ if (WiFi.status() == WL_CONNECTED) {
   } else {
     iTimeOffset = 3600;
   }
+#endif
   // Initialize a NTPClient to get time
   timeClient.begin();
   timeClient.setTimeOffset(iTimeOffset);

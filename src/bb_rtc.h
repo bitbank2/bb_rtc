@@ -62,6 +62,7 @@ typedef struct _tagbbi2c
 #define RTC_RV3032_ADDR 0x51
 #define RTC_PCF8563_ADDR 0x51
 #define RTC_PCF85063A_ADDR 0x51
+#define RTC_RX8130_ADDR 0x32
 
 // Status bits
 #define STATUS_RUNNING 1
@@ -75,6 +76,7 @@ enum
   RTC_DS3231,
   RTC_RV3032,
   RTC_PCF85063A,
+  RTC_RX8130,
   RTC_TYPE_COUNT
 };
 

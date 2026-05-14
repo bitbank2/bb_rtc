@@ -108,6 +108,11 @@ void BBRTC::stop(void)
 uint8_t ucTemp[4];
 
     switch (_iRTCType) {
+        case RTC_RX8130:
+            ucTemp[0] = 0x1e; // control register 0
+            ucTemp[1] = 0x40; // set STOP bit
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
         case RTC_DS3231:
             ucTemp[0] = 0xe; // control
             ucTemp[1] = 0x80; // set the EOSC bit (disables the clock)
@@ -175,6 +180,19 @@ uint8_t ucTemp[4];
           _iRTCAddr = RTC_DS3231_ADDR;
           _iRTCType = RTC_DS3231;
       }
+  }
+  if (_iRTCType == -1 && I2CTest(&_bb, RTC_RX8130_ADDR)) {
+     // see if it's the Epson RX8130
+     // registers 0x20-0x23 are RAM
+     ucTemp[0] = 0x20;
+     ucTemp[1] = 0x55;
+     I2CWrite(&_bb, RTC_RX8130_ADDR, ucTemp, 2);
+     I2CReadRegister(&_bb, RTC_RX8130_ADDR, 0x20, ucTemp, 1);
+     if (ucTemp[0] == 0x55) {
+        logmsg("Found RX8130");
+        _iRTCAddr = RTC_RX8130_ADDR;
+        _iRTCType = RTC_RX8130;
+     }
   }
   if (_iRTCType == -1 && I2CTest(&_bb, RTC_RV3032_ADDR)) {
      // The PCF85063A, PCF8563 and RV3032 all use the same I2C address (0x51)
@@ -311,6 +329,12 @@ uint8_t ucTemp[4];
         iStatus |= STATUS_IRQ2_TRIGGERED;
      if (ucTemp[0] & 1)
         iStatus |= STATUS_IRQ1_TRIGGERED;
+  } else if (_iRTCType == RTC_RX8130) {
+     I2CReadRegister(&_bb, _iRTCAddr, 0x1d, ucTemp, 1); // read the flags register
+     if (ucTemp[0] & 0x08) // alarm flag
+        iStatus |= STATUS_IRQ1_TRIGGERED;
+     if (!(ucTemp[0] & 0x02)) // VLF
+        iStatus |= STATUS_RUNNING;
   } else if (_iRTCType == RTC_RV3032) {
      iStatus |= STATUS_RUNNING; // oscillator is always running
      I2CReadRegister(&_bb, _iRTCAddr, 0xd, ucTemp, 1); // read the status register
@@ -387,7 +411,46 @@ void BBRTC::setAlarm(uint8_t type, struct tm *pTime)
 {
 uint8_t ucTemp[8];
 
-  if (_iRTCType == RTC_DS3231) {
+  if (_iRTCType == RTC_RX8130) {
+    switch (type) {
+      case ALARM_MINUTE: // turn on alarm for matching the minute
+        ucTemp[0] = 0x1e; // control register
+        ucTemp[1] = 0x8; // enable alarm interrupt
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+        ucTemp[0] = 0x17; // starting register for alarm
+        ucTemp[1] = 0x80 | ((pTime->tm_min / 10) << 4);
+        ucTemp[1] |= (pTime->tm_min % 10);
+        ucTemp[2] = 0;
+        ucTemp[3] = 0; // disable other alarm types
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 4);
+        break;
+      case ALARM_TIME: // turn on alarm to match a specific time
+// Values are stored as BCD
+        ucTemp[0] = 0x17; // start at register 17
+        // minutes
+        ucTemp[1] = 0x80 | ((pTime->tm_min / 10) << 4);
+        ucTemp[1] |= (pTime->tm_min % 10);
+        // hours
+        ucTemp[2] = 0x80 | ((pTime->tm_hour / 10) << 4);
+        ucTemp[2] |= (pTime->tm_hour % 10);
+        // day of the week
+        if (type == ALARM_DAY) {
+           ucTemp[3] = 0x80 | (1 << pTime->tm_wday);
+           ucTemp[4] = 8; // set WADA bit
+        // day of the month
+        } else if (type == ALARM_DATE) {
+           ucTemp[3] = 0x80 | (pTime->tm_mday / 10) << 4;
+           ucTemp[3] |= (pTime->tm_mday % 10);
+           ucTemp[4] = 0; // clear WADA bit
+        }
+        // for matching the date, all bits are left as 0's (00000)
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 5);
+        ucTemp[0] = 0x1e; // control register
+        ucTemp[1] = 0x8; // enable alarm interrupt
+        I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+        break;
+    } // switch on alarm type
+  } else if (_iRTCType == RTC_DS3231) {
     switch (type) {
       case ALARM_SECOND: // turn on repeating alarm for every second
         ucTemp[0] = 0xe; // control register
@@ -747,7 +810,30 @@ void BBRTC::setTime(struct tm *pTime)
 unsigned char ucTemp[20];
 uint8_t i;
 
-   if (_iRTCType == RTC_DS3231) {
+   if (_iRTCType == RTC_RX8130) {
+        ucTemp[0] = 0x10; // start at register 0x10 (seconds)
+        // seconds
+        ucTemp[1] = ((pTime->tm_sec / 10) << 4);
+        ucTemp[1] |= (pTime->tm_sec % 10);
+        // minutes
+        ucTemp[2] = ((pTime->tm_min / 10) << 4); 
+        ucTemp[2] |= (pTime->tm_min % 10); 
+        // hours (and set 24-hour format)
+        ucTemp[3] = ((pTime->tm_hour / 10) << 4);
+        ucTemp[3] |= (pTime->tm_hour % 10);
+        // day of the week
+        ucTemp[4] = 1 << pTime->tm_wday; // one bit per day
+        // day of the month
+        ucTemp[5] = (pTime->tm_mday / 10) << 4;
+        ucTemp[5] |= (pTime->tm_mday % 10);
+        // month
+        i = pTime->tm_mon+1; // 1-12 on the RTC
+        ucTemp[6] = (i / 10) << 4;
+        ucTemp[6] |= (i % 10);
+        // year
+        ucTemp[7] = (((pTime->tm_year % 100)/10) << 4);
+        ucTemp[7] |= (pTime->tm_year % 10);
+   } else if (_iRTCType == RTC_DS3231) {
 // Values are stored as BCD
         ucTemp[0] = 0; // start at register 0
         // seconds
@@ -833,7 +919,29 @@ void BBRTC::getTime(struct tm *pTime)
 {
 unsigned char ucTemp[20];
 
-    if (_iRTCType == RTC_DS3231) {
+    if (_iRTCType == RTC_RX8130) {
+        I2CReadRegister(&_bb, _iRTCAddr, 0x10, ucTemp, 7); // start of data registers      
+        memset(pTime, 0, sizeof(struct tm));
+        // convert numbers from BCD
+        pTime->tm_sec = ((ucTemp[0] >> 4) * 10) + (ucTemp[0] & 0xf);
+        pTime->tm_min = ((ucTemp[1] >> 4) * 10) + (ucTemp[1] & 0xf);
+        // hours are stored in 24-hour format in the tm struct
+        pTime->tm_hour = ((ucTemp[2] >> 4) * 10) + (ucTemp[2] & 0xf);
+        if (ucTemp[3]) {
+            uint8_t wday = 0; // a single set bit determines the day
+            uint8_t u8 = ucTemp[3];
+            while (u8 != 1 && wday < 7) {
+                wday++; u8 >>= 1;
+            }
+            pTime->tm_wday = wday;
+        }
+        // day of the month
+        pTime->tm_mday = ((ucTemp[4] >> 4) * 10) + (ucTemp[4] & 0xf);
+        // month
+        pTime->tm_mon = (((ucTemp[5] >> 4) & 1) * 10 + (ucTemp[5] & 0xf)); // 1-12
+        pTime->tm_year = ((ucTemp[6] >> 4) * 10) + (ucTemp[6] & 0xf);
+        if (pTime->tm_year < 70) pTime->tm_year += 100; // no century bit
+    } else if (_iRTCType == RTC_DS3231) {
         I2CReadRegister(&_bb, _iRTCAddr, 0, ucTemp, 7); // start of data registers
         memset(pTime, 0, sizeof(struct tm));
         // convert numbers from BCD
@@ -896,7 +1004,13 @@ void BBRTC::clearAlarms(bool bDisable)
 {
 uint8_t ucTemp[4];
 
-  if (_iRTCType == RTC_DS3231)
+  if (_iRTCType == RTC_RX8130)
+  {
+    ucTemp[0] = 0x1e; // control register 0
+    ucTemp[1] = 0; // disable AIE (alarm interrupt enable)
+    I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+  }
+  else if (_iRTCType == RTC_DS3231)
   {
     ucTemp[0] = 0xe; // control register
     ucTemp[1] = 0x4; // disable alarm interrupt bits
