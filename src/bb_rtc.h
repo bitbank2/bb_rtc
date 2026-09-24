@@ -98,7 +98,7 @@ enum {
 class BBRTC
 {
 public:
-    BBRTC() {}
+    BBRTC() { _bIRQ = true;}
     ~BBRTC() {};
     int getType();
     int getStatus();
@@ -110,6 +110,7 @@ public:
     void setVBackup(bool bCharge);
     void setAlarm(uint8_t type, struct tm *thetime);
     int getTemp(void);
+    void enableIRQ(bool bEnable);
     void setTime(struct tm *pTime);
     void getTime(struct tm *pTime);
     void setCountdownAlarm(int iSeconds);
@@ -125,6 +126,7 @@ private:
     int _iRTCType;
     int _iRTCAddr;
     BBI2C _bb;
+    bool _bIRQ;
 }; // class BBRTC
 
 #endif // __BB_RTC__

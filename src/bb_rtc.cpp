@@ -59,6 +59,53 @@ int BBRTC::getType(void)
 } /* getType() */
 
 //
+// Enable or disable the IRQ feature
+//
+void BBRTC::enableIRQ(bool bEnable)
+{
+uint8_t ucTemp[4];
+
+    _bIRQ = bEnable;
+    switch (_iRTCType) {
+        case RTC_RV3032:
+            ucTemp[0] = 0x11;
+            ucTemp[1] = (_bIRQ) ? 0x8 : 0x0; // alarm interrupt enable
+            I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
+            break;
+        case RTC_RX8130:
+            ucTemp[0] = 0x1e; // control register 0
+            ucTemp[1] = (_bIRQ) ? 0x18:0x00; // TIE+AIE (timer+alarm interrupt enable)
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+        case RTC_DS3231:
+            ucTemp[0] = 0xe; // control register
+            ucTemp[1] = 0x4; // disable alarm interrupt bits
+            if (_bIRQ) {
+                ucTemp[1] |= 0x3; // enable alarm1/2 interrupts
+            }
+            ucTemp[2] = 0x0; // clear A1F & A2F (alarm 1 or 2 fired) bit to allow it to fire again
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
+            break;
+        case RTC_PCF8563:
+            ucTemp[0] = 1; // Control_status_2
+            ucTemp[1] = (_bIRQ) ? 0x03 : 0x00; // enable alarm+timer interrupts?
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+        case RTC_PCF85063A:
+            I2CReadRegister(&_bb, _iRTCAddr, 0x01, &ucTemp[1], 1); // read control reg 2
+            ucTemp[0] = 1; // Control_status_2
+            ucTemp[1] &= 0xf3; // clear alarm flags
+            if (_bIRQ) {
+                ucTemp[1] |= 0x03; // enable alarm+timer interrupts
+            } else {
+                ucTemp[1] &= 0xfc; // disable
+            }
+            I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
+            break;
+    } // switch on RTC type
+} /* enableIRQ() */
+
+//
 // Enable or disable trickle charging
 // of the backup battery source
 //
@@ -69,7 +116,7 @@ uint8_t ucTemp[4];
     if (_iRTCType != RTC_RV3032) return; // only supported on RVxxxx devices
 
     ucTemp[0] = 0x11;
-    ucTemp[1] = 0x4; // event interrupt enabled
+    ucTemp[1] = (_bIRQ) ? 0x8 : 0x0; // alarm interrupt enable
     I2CWrite(&_bb, RTC_RV3032_ADDR, ucTemp, 2);
     ucTemp[0] = 0x15;
     ucTemp[1] = 0x0; // event filter off
@@ -549,7 +596,7 @@ uint8_t ucTemp[8];
     switch (type) {
       case ALARM_SECOND: // turn on repeating alarm for every second
         ucTemp[0] = 0x1; // control_status_2
-        ucTemp[1] = 0x1; // enable timer & interrupt
+        ucTemp[1] = (_bIRQ) ? 0x3:0x00; // enable alarm+timer interrupt?
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         ucTemp[0] = 0xe; // timer control
         ucTemp[1] = 0x81; // enable timer for 1/64 second interval
@@ -558,7 +605,7 @@ uint8_t ucTemp[8];
         break;
       case ALARM_MINUTE: // turn on repeating timer for every minute
         ucTemp[0] = 0x1; // control_status_2
-        ucTemp[1] = 0x1; // enable timer & interrupt
+        ucTemp[1] = (_bIRQ) ? 0x3:0x00; // enable timer & interrupt
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         ucTemp[0] = 0xe; // timer control
         ucTemp[1] = 0x82; // enable timer for 1 hz interval
@@ -604,7 +651,7 @@ uint8_t ucTemp[8];
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 5);
         // enable alarm
         ucTemp[0] = 0x1; // control_status_2
-        ucTemp[1] = 0x2; // enable alarm & interrupt
+        ucTemp[1] = (_bIRQ) ? 0x3:0x00; // enable alarm & interrupt
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         break;
      } // switch on alarm type
@@ -615,14 +662,22 @@ uint8_t ucTemp[8];
 //      case ALARM_SECOND: // not supported
       case ALARM_MINUTE: // turn on repeating timer for every minute
         ucTemp[0] = 0x1; // control_status_2
-        ucTemp[1] |= 0xa0; // enable minute timer & interrupt
+        if (_bIRQ) {
+            ucTemp[1] |= 0x80; // enable alarm interrupt
+        } else {
+            ucTemp[1] &= 0x7f;
+        }
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
         break;
       case ALARM_TIME: // turn on alarm to match a specific time
       case ALARM_DAY: // turn on alarm for a specific day of the week
       case ALARM_DATE: // turn on alarm for a specific date
         ucTemp[0] = 0x1; // control_status_2
-        ucTemp[1] |= 0x80; // enable interrupt
+        if (_bIRQ) {
+            ucTemp[1] |= 0x80; // enable interrupt
+        } else {
+            ucTemp[1] &= 0x7f;
+        }
         I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
 // Values are stored as BCD
         ucTemp[0] = 0xb; // start at register 11
@@ -1006,14 +1061,17 @@ uint8_t ucTemp[4];
 
   if (_iRTCType == RTC_RX8130)
   {
-    ucTemp[0] = 0x1e; // control register 0
-    ucTemp[1] = 0; // disable AIE (alarm interrupt enable)
+    ucTemp[0] = 0x1d; // flag register
+    ucTemp[1] = 0; // clear alarm flags
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 2);
   }
   else if (_iRTCType == RTC_DS3231)
   {
     ucTemp[0] = 0xe; // control register
     ucTemp[1] = 0x4; // disable alarm interrupt bits
+    if (_bIRQ) {
+        ucTemp[1] |= 0x3; // enable alarm1/2 interrupts
+    }
     ucTemp[2] = 0x0; // clear A1F & A2F (alarm 1 or 2 fired) bit to allow it to fire again
     I2CWrite(&_bb, _iRTCAddr, ucTemp, 3);
   }
